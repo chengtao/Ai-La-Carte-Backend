@@ -32,6 +32,8 @@ gem 'rack-protection', '~> 3.0'
 group :development do
   gem 'rerun', '~> 0.14'
   gem 'pry', '~> 0.14'
+  gem 'pry-byebug'
+  gem "pry-rescue"
 end
 
 group :test do

@@ -37,8 +37,9 @@ class Restaurant < Sequel::Model
       cuisine: cuisine,
       lat: lat,
       lng: lng,
-      food_menu_id: food_menu_id,
-      wine_menu_id: wine_menu_id,
+      latest_food_menu_id: food_menu_id,
+      latest_wine_menu_id: wine_menu_id,
+      menu_updated_at: menu_updated_at&.iso8601,
       created_at: created_at&.iso8601,
       last_updated_at: last_updated_at&.iso8601
     }

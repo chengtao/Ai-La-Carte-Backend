@@ -1,9 +1,8 @@
-class IcsController < BaseController
-  ICS_USERNAME = 'office'.freeze
-  ICS_PASSWORD = 'OfficeManager!123'.freeze
+# frozen_string_literal: true
 
+class IcsController < BaseController
   before '/ics/*' do
-    content_type :html
+    content_type 'text/html; charset=utf-8'
     pass if request.path_info == '/ics/home' || request.path_info == '/ics/login'
     redirect '/ics/home' unless authenticated?
   end
@@ -16,10 +15,13 @@ class IcsController < BaseController
 
   # Handle login
   post '/ics/login' do
-    if params[:username] == ICS_USERNAME && params[:password] == ICS_PASSWORD
+    if params[:username] == Constants::Auth::ICS_USERNAME &&
+       params[:password] == Constants::Auth::ICS_PASSWORD
       session[:user] = { username: params[:username] }
+      logger.info "User #{params[:username]} logged in"
       redirect '/ics/sessions'
     else
+      logger.warn "Failed login attempt for user: #{params[:username]}"
       @error = 'Invalid username or password'
       haml :'ics/home', layout: :layout
     end
@@ -27,14 +29,22 @@ class IcsController < BaseController
 
   # Logout
   get '/ics/logout' do
+    username = current_user&.dig(:username)
     session.clear
+    logger.info "User #{username} logged out"
     redirect '/ics/home'
   end
 
   # Sessions list (reviewed and unreviewed)
   get '/ics/sessions' do
-    @unreviewed_sessions = Session.unreviewed.order(Sequel.desc(:created_at)).limit(50).all
-    @reviewed_sessions = Session.reviewed.order(Sequel.desc(:created_at)).limit(50).all
+    @unreviewed_sessions = Session.unreviewed
+                                  .order(Sequel.desc(:created_at))
+                                  .limit(Constants::Pagination::SESSIONS_LIMIT)
+                                  .all
+    @reviewed_sessions = Session.reviewed
+                                .order(Sequel.desc(:created_at))
+                                .limit(Constants::Pagination::SESSIONS_LIMIT)
+                                .all
     haml :'ics/sessions', layout: :layout
   end
 
@@ -43,7 +53,9 @@ class IcsController < BaseController
     @session = Session[params[:id]]
     halt 404, 'Session not found' unless @session
 
-    @restaurants = Restaurant.order(:name).limit(100).all
+    @restaurants = Restaurant.order(:name)
+                             .limit(Constants::Pagination::RESTAURANTS_LIMIT)
+                             .all
     haml :'ics/session_detail', layout: :layout
   end
 
@@ -57,12 +69,12 @@ class IcsController < BaseController
     if restaurant_id && !restaurant_id.empty?
       restaurant = Restaurant[restaurant_id]
 
-      if restaurant && params[:food_menu_id]
-        restaurant.update(food_menu_id: params[:food_menu_id])
-      end
-
-      if restaurant && params[:wine_menu_id]
-        restaurant.update(wine_menu_id: params[:wine_menu_id])
+      if restaurant
+        updates = {}
+        updates[:food_menu_id] = params[:food_menu_id] if params[:food_menu_id]
+        updates[:wine_menu_id] = params[:wine_menu_id] if params[:wine_menu_id]
+        updates[:menu_updated_at] = Time.now unless updates.empty?
+        restaurant.update(updates) unless updates.empty?
       end
     end
 
@@ -72,6 +84,33 @@ class IcsController < BaseController
     ) unless @session.reviewed?
 
     redirect '/ics/sessions'
+  end
+
+  # Create restaurant from session - pre-populates from session data
+  post '/ics/sessions/:id/create_restaurant' do
+    @session = Session[params[:id]]
+    halt 404, 'Session not found' unless @session
+
+    # Create restaurant with session data
+    restaurant = Restaurant.create(
+      name: @session.potential_restaurant_name || 'New Restaurant',
+      address: @session.potential_address,
+      lat: @session.lat,
+      lng: @session.lng,
+      food_menu_id: @session.food_menu_id,
+      wine_menu_id: @session.wine_menu_id,
+      menu_updated_at: Time.now
+    )
+
+    # Mark session as reviewed
+    Review.create(
+      session_id: @session.id,
+      reviewed_at: Time.now
+    ) unless @session.reviewed?
+
+    logger.info "Created restaurant #{restaurant.id} from session #{@session.id}"
+
+    redirect "/ics/restaurants/#{restaurant.id}"
   end
 
   # Update menu item
@@ -94,9 +133,14 @@ class IcsController < BaseController
   # Restaurants list
   get '/ics/restaurants' do
     @restaurants = if params[:q] && !params[:q].empty?
-                     Restaurant.search(params[:q]).order(:name).limit(100).all
+                     Restaurant.search(params[:q])
+                               .order(:name)
+                               .limit(Constants::Pagination::RESTAURANTS_LIMIT)
+                               .all
                    else
-                     Restaurant.order(Sequel.desc(:created_at)).limit(100).all
+                     Restaurant.order(Sequel.desc(:created_at))
+                               .limit(Constants::Pagination::RESTAURANTS_LIMIT)
+                               .all
                    end
     haml :'ics/restaurants', layout: :layout
   end
@@ -145,9 +189,14 @@ class IcsController < BaseController
   # Synthesized photos list
   get '/ics/synthesized_photos' do
     @photos = if params[:q] && !params[:q].empty?
-                FoodPhoto.search(params[:q]).order(Sequel.desc(:id)).limit(100).all
+                FoodPhoto.search(params[:q])
+                         .order(Sequel.desc(:id))
+                         .limit(Constants::Pagination::PHOTOS_LIMIT)
+                         .all
               else
-                FoodPhoto.order(Sequel.desc(:id)).limit(100).all
+                FoodPhoto.order(Sequel.desc(:id))
+                         .limit(Constants::Pagination::PHOTOS_LIMIT)
+                         .all
               end
     haml :'ics/synthesized_photos', layout: :layout
   end
@@ -162,7 +211,9 @@ class IcsController < BaseController
       redirect '/ics/synthesized_photos'
     rescue FoodPhotoSynthesizer::SynthesisError => e
       @error = e.message
-      @photos = FoodPhoto.order(Sequel.desc(:id)).limit(100).all
+      @photos = FoodPhoto.order(Sequel.desc(:id))
+                         .limit(Constants::Pagination::PHOTOS_LIMIT)
+                         .all
       haml :'ics/synthesized_photos', layout: :layout
     end
   end

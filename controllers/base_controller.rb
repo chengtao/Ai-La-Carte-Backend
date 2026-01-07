@@ -1,15 +1,24 @@
+# frozen_string_literal: true
+
 require 'sinatra/base'
 require 'sinatra/json'
+require_relative '../lib/app_logger'
 
 class BaseController < Sinatra::Base
+  include AppLogger
+
   configure do
-    set :views, File.join(File.dirname(__FILE__), '..', 'views')
-    set :haml, format: :html5
+    set :views, File.expand_path('../views', __dir__)
+    set :public_folder, File.expand_path('../public', __dir__)
+    set :haml, format: :html5, escape_html: false
   end
 
   helpers do
+    include AppLogger
+
     def json_params
       @json_params ||= begin
+        request.body.rewind
         body = request.body.read
         return {} if body.empty?
 
