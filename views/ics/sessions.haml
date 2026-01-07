@@ -1,0 +1,97 @@
+%h2.mb-4
+  %i.bi.bi-card-checklist.me-2
+  Sessions
+
+.row
+  .col-12
+
+    %ul.nav.nav-tabs.mb-3#sessionTabs{role: 'tablist'}
+      %li.nav-item{role: 'presentation'}
+        %button.nav-link.active#unreviewed-tab{'data-bs-toggle': 'tab', 'data-bs-target': '#unreviewed', type: 'button', role: 'tab'}
+          %i.bi.bi-clock-history.me-1
+          Unreviewed
+          %span.badge.bg-warning.text-dark.ms-1= @unreviewed_sessions.count
+      %li.nav-item{role: 'presentation'}
+        %button.nav-link#reviewed-tab{'data-bs-toggle': 'tab', 'data-bs-target': '#reviewed', type: 'button', role: 'tab'}
+          %i.bi.bi-check-circle.me-1
+          Reviewed
+          %span.badge.bg-success.ms-1= @reviewed_sessions.count
+
+    .tab-content
+      #unreviewed.tab-pane.fade.show.active{role: 'tabpanel'}
+        - if @unreviewed_sessions.empty?
+          .alert.alert-info
+            %i.bi.bi-info-circle.me-2
+            No unreviewed sessions
+        - else
+          .table-responsive
+            %table.table.table-hover
+              %thead.table-light
+                %tr
+                  %th ID
+                  %th Photos
+                  %th Restaurant
+                  %th Location
+                  %th Created
+                  %th Actions
+              %tbody
+                - @unreviewed_sessions.each do |s|
+                  %tr
+                    %td= s.id
+                    %td
+                      %span.badge.bg-secondary
+                        %i.bi.bi-image.me-1
+                        = s.photo_urls_array.count
+                    %td
+                      - if s.potential_restaurant_name
+                        = s.potential_restaurant_name
+                      - else
+                        %span.text-muted Unknown
+                    %td
+                      - if s.lat && s.lng
+                        %small.text-muted
+                          %i.bi.bi-geo-alt.me-1
+                          = "#{s.lat.round(4)}, #{s.lng.round(4)}"
+                      - else
+                        %span.text-muted -
+                    %td
+                      %small= s.created_at&.strftime('%Y-%m-%d %H:%M')
+                    %td
+                      %a.btn.btn-sm.btn-primary{href: "/ics/sessions/#{s.id}"}
+                        %i.bi.bi-eye.me-1
+                        Review
+
+      #reviewed.tab-pane.fade{role: 'tabpanel'}
+        - if @reviewed_sessions.empty?
+          .alert.alert-info
+            %i.bi.bi-info-circle.me-2
+            No reviewed sessions
+        - else
+          .table-responsive
+            %table.table.table-hover
+              %thead.table-light
+                %tr
+                  %th ID
+                  %th Photos
+                  %th Restaurant
+                  %th Reviewed
+                  %th Actions
+              %tbody
+                - @reviewed_sessions.each do |s|
+                  %tr
+                    %td= s.id
+                    %td
+                      %span.badge.bg-secondary
+                        %i.bi.bi-image.me-1
+                        = s.photo_urls_array.count
+                    %td
+                      - if s.potential_restaurant_name
+                        = s.potential_restaurant_name
+                      - else
+                        %span.text-muted Unknown
+                    %td
+                      %small= s.review&.reviewed_at&.strftime('%Y-%m-%d %H:%M')
+                    %td
+                      %a.btn.btn-sm.btn-outline-secondary{href: "/ics/sessions/#{s.id}"}
+                        %i.bi.bi-eye.me-1
+                        View

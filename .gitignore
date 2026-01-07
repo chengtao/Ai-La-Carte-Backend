@@ -1,0 +1,43 @@
+# Environment
+.env
+.env.local
+
+# Dependencies
+vendor/bundle
+.bundle
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ruby
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Documentation
+/doc/
+/rdoc/
+
+# Database
+*.sqlite3
+*.sqlite3-journal
+db/schema.rb

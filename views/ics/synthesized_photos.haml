@@ -1,0 +1,38 @@
+%h2.mb-4
+  %i.bi.bi-images.me-2
+  Synthesized Food Photos
+
+- if @error
+  .alert.alert-danger.d-flex.align-items-center
+    %i.bi.bi-exclamation-triangle-fill.me-2
+    = @error
+
+.row.mb-4
+  .col-md-6
+    %form.d-flex{action: '/ics/synthesized_photos', method: 'get'}
+      %input.form-control.me-2{type: 'search', name: 'q', placeholder: 'Search by standardized name...', value: params[:q]}
+      %button.btn.btn-outline-primary{type: 'submit'}
+        %i.bi.bi-search
+  .col-md-6.text-end
+    %span.text-muted
+      = @photos.count
+      photos found
+
+- if @photos.empty?
+  .alert.alert-info
+    %i.bi.bi-info-circle.me-2
+    No synthesized photos found
+- else
+  .row
+    - @photos.each do |photo|
+      .col-6.col-md-4.col-lg-3.mb-4
+        .card.h-100
+          %img.card-img-top{src: photo.photo_url, alt: photo.standardized_name, style: 'height: 180px; object-fit: cover;', loading: 'lazy'}
+          .card-body.p-2
+            %h6.card-title.mb-1.text-truncate{title: photo.standardized_name}= photo.standardized_name
+            %small.text-muted= photo.created_at&.strftime('%Y-%m-%d')
+          .card-footer.bg-transparent.p-2
+            %form{action: "/ics/synthesized_photos/#{photo.id}/regenerate", method: 'post', onsubmit: 'return confirm("Regenerate this photo? This will replace the current image.")'}
+              %button.btn.btn-sm.btn-outline-secondary.w-100{type: 'submit'}
+                %i.bi.bi-arrow-clockwise.me-1
+                Regenerate

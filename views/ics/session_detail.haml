@@ -1,0 +1,78 @@
+%nav{'aria-label': 'breadcrumb'}
+  %ol.breadcrumb
+    %li.breadcrumb-item
+      %a{href: '/ics/sessions'} Sessions
+    %li.breadcrumb-item.active Session ##{@session.id}
+
+.row.mb-4
+  .col-12
+    .card
+      .card-header.d-flex.justify-content-between.align-items-center
+        %h5.mb-0
+          %i.bi.bi-info-circle.me-2
+          Session Details
+        - if @session.reviewed?
+          %span.badge.bg-success
+            %i.bi.bi-check-circle.me-1
+            Reviewed
+        - else
+          %span.badge.bg-warning.text-dark
+            %i.bi.bi-clock.me-1
+            Pending Review
+      .card-body
+        .row
+          .col-md-6
+            %p
+              %strong Restaurant:
+              = @session.potential_restaurant_name || 'Unknown'
+            %p
+              %strong Address:
+              = @session.potential_address || 'Unknown'
+          .col-md-6
+            %p
+              %strong Location:
+              - if @session.lat && @session.lng
+                = "#{@session.lat.round(6)}, #{@session.lng.round(6)}"
+              - else
+                Unknown
+            %p
+              %strong Created:
+              = @session.created_at&.strftime('%Y-%m-%d %H:%M:%S')
+
+%h5.mb-3
+  %i.bi.bi-images.me-2
+  Photos
+.row.mb-4
+  - @session.photo_urls_array.each_with_index do |url, index|
+    .col-6.col-md-4.col-lg-3.mb-3
+      .card
+        %img.card-img-top{src: url, alt: "Menu photo #{index + 1}", style: 'height: 200px; object-fit: cover;'}
+        .card-footer.text-center
+          %small.text-muted Photo #{index + 1}
+
+- unless @session.reviewed?
+  .card.mb-4
+    .card-header
+      %h5.mb-0
+        %i.bi.bi-shop.me-2
+        Associate with Restaurant
+    .card-body
+      %form{action: "/ics/sessions/#{@session.id}/review", method: 'post'}
+        .mb-3
+          %label.form-label{for: 'restaurant_id'} Select Restaurant
+          %select.form-select{name: 'restaurant_id', id: 'restaurant_id'}
+            %option{value: ''} -- Create new or skip --
+            - @restaurants.each do |r|
+              %option{value: r.id}= "#{r.name} - #{r.address}"
+
+        .mb-3
+          %label.form-label{for: 'new_restaurant_name'} Or Create New Restaurant
+          .row
+            .col-md-6
+              %input.form-control.mb-2{type: 'text', name: 'new_restaurant_name', placeholder: 'Restaurant Name', value: @session.potential_restaurant_name}
+            .col-md-6
+              %input.form-control.mb-2{type: 'text', name: 'new_restaurant_address', placeholder: 'Address', value: @session.potential_address}
+
+        %button.btn.btn-success{type: 'submit'}
+          %i.bi.bi-check-circle.me-2
+          Mark as Reviewed

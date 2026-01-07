@@ -1,0 +1,87 @@
+%h2.mb-4
+  %i.bi.bi-shop.me-2
+  Restaurants
+
+.row.mb-4
+  .col-md-6
+    %form.d-flex{action: '/ics/restaurants', method: 'get'}
+      %input.form-control.me-2{type: 'search', name: 'q', placeholder: 'Search by name or address...', value: params[:q]}
+      %button.btn.btn-outline-primary{type: 'submit'}
+        %i.bi.bi-search
+  .col-md-6.text-end
+    %button.btn.btn-success{'data-bs-toggle': 'collapse', 'data-bs-target': '#newRestaurantForm'}
+      %i.bi.bi-plus-circle.me-1
+      Add Restaurant
+
+#newRestaurantForm.collapse.mb-4
+  .card
+    .card-body
+      %form{action: '/ics/restaurants', method: 'post'}
+        .row
+          .col-md-6.mb-3
+            %label.form-label{for: 'name'} Name *
+            %input.form-control{type: 'text', name: 'name', id: 'name', required: true}
+          .col-md-6.mb-3
+            %label.form-label{for: 'cuisine'} Cuisine
+            %input.form-control{type: 'text', name: 'cuisine', id: 'cuisine', placeholder: 'e.g., Italian, Japanese'}
+        .row
+          .col-md-8.mb-3
+            %label.form-label{for: 'address'} Address
+            %input.form-control{type: 'text', name: 'address', id: 'address'}
+          .col-md-2.mb-3
+            %label.form-label{for: 'lat'} Latitude
+            %input.form-control{type: 'number', name: 'lat', id: 'lat', step: 'any'}
+          .col-md-2.mb-3
+            %label.form-label{for: 'lng'} Longitude
+            %input.form-control{type: 'number', name: 'lng', id: 'lng', step: 'any'}
+        %button.btn.btn-primary{type: 'submit'}
+          %i.bi.bi-save.me-1
+          Save Restaurant
+
+- if @restaurants.empty?
+  .alert.alert-info
+    %i.bi.bi-info-circle.me-2
+    No restaurants found
+- else
+  .table-responsive
+    %table.table.table-hover
+      %thead.table-light
+        %tr
+          %th ID
+          %th Name
+          %th Cuisine
+          %th Address
+          %th Menus
+          %th Updated
+          %th Actions
+      %tbody
+        - @restaurants.each do |r|
+          %tr
+            %td= r.id
+            %td
+              %strong= r.name
+            %td
+              - if r.cuisine
+                %span.badge.bg-info= r.cuisine
+              - else
+                %span.text-muted -
+            %td= r.address || '-'
+            %td
+              - if r.food_menu_id
+                %span.badge.bg-success.me-1
+                  %i.bi.bi-egg-fried.me-1
+                  Food
+              - if r.wine_menu_id
+                %span.badge.bg-danger
+                  %i.bi.bi-cup-straw.me-1
+                  Wine
+              - unless r.food_menu_id || r.wine_menu_id
+                %span.text-muted None
+            %td
+              %small= r.last_updated_at&.strftime('%Y-%m-%d')
+            %td
+              %a.btn.btn-sm.btn-outline-primary.me-1{href: "/ics/restaurants/#{r.id}"}
+                %i.bi.bi-pencil
+              %form.d-inline{action: "/ics/restaurants/#{r.id}/delete", method: 'post', onsubmit: 'return confirm("Delete this restaurant?")'}
+                %button.btn.btn-sm.btn-outline-danger{type: 'submit'}
+                  %i.bi.bi-trash

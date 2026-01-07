@@ -1,0 +1,90 @@
+%nav{'aria-label': 'breadcrumb'}
+  %ol.breadcrumb
+    %li.breadcrumb-item
+      %a{href: '/ics/restaurants'} Restaurants
+    %li.breadcrumb-item.active= @restaurant.name
+
+.card.mb-4
+  .card-header
+    %h5.mb-0
+      %i.bi.bi-pencil.me-2
+      Edit Restaurant
+  .card-body
+    %form{action: "/ics/restaurants/#{@restaurant.id}", method: 'post'}
+      .row
+        .col-md-6.mb-3
+          %label.form-label{for: 'name'} Name *
+          %input.form-control{type: 'text', name: 'name', id: 'name', required: true, value: @restaurant.name}
+        .col-md-6.mb-3
+          %label.form-label{for: 'cuisine'} Cuisine
+          %input.form-control{type: 'text', name: 'cuisine', id: 'cuisine', value: @restaurant.cuisine}
+      .row
+        .col-md-8.mb-3
+          %label.form-label{for: 'address'} Address
+          %input.form-control{type: 'text', name: 'address', id: 'address', value: @restaurant.address}
+        .col-md-2.mb-3
+          %label.form-label{for: 'lat'} Latitude
+          %input.form-control{type: 'number', name: 'lat', id: 'lat', step: 'any', value: @restaurant.lat}
+        .col-md-2.mb-3
+          %label.form-label{for: 'lng'} Longitude
+          %input.form-control{type: 'number', name: 'lng', id: 'lng', step: 'any', value: @restaurant.lng}
+      .d-flex.justify-content-between
+        %a.btn.btn-secondary{href: '/ics/restaurants'}
+          %i.bi.bi-arrow-left.me-1
+          Back
+        %button.btn.btn-primary{type: 'submit'}
+          %i.bi.bi-save.me-1
+          Save Changes
+
+- if @restaurant.food_menu
+  .card.mb-4
+    .card-header
+      %h5.mb-0
+        %i.bi.bi-egg-fried.me-2
+        Food Menu
+    .card-body
+      .table-responsive
+        %table.table.table-sm
+          %thead
+            %tr
+              %th Name
+              %th Standardized
+              %th Price
+              %th Category
+              %th Spice
+              %th Richness
+          %tbody
+            - @restaurant.food_menu.food_menu_items.each do |item|
+              %tr
+                %td= item.name
+                %td
+                  %small.text-muted= item.standardized_name || '-'
+                %td= item.price ? "$#{item.price}" : '-'
+                %td
+                  %span.badge.bg-secondary= item.category
+                %td= item.spice || '-'
+                %td= item.richness || '-'
+
+- if @restaurant.wine_menu
+  .card.mb-4
+    .card-header
+      %h5.mb-0
+        %i.bi.bi-cup-straw.me-2
+        Wine Menu
+    .card-body
+      .table-responsive
+        %table.table.table-sm
+          %thead
+            %tr
+              %th Name
+              %th Category
+              %th Glass
+              %th Bottle
+          %tbody
+            - @restaurant.wine_menu.wine_menu_items.each do |item|
+              %tr
+                %td= item.name
+                %td
+                  %span.badge.bg-secondary= item.category
+                %td= item.price_glass ? "$#{item.price_glass}" : '-'
+                %td= item.price_bottle ? "$#{item.price_bottle}" : '-'
