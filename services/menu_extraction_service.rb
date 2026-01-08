@@ -1,4 +1,6 @@
 class MenuExtractionService
+  include AppLogger
+
   class ExtractionError < StandardError; end
 
   EXTRACTION_SCHEMA = {
@@ -96,15 +98,53 @@ class MenuExtractionService
 
   def initialize(openai_client: nil)
     @openai = openai_client || OpenaiClient.new
+    logger.debug "MenuExtractionService initialized"
   end
 
   def extract(photo_urls)
-    return { food_items: [], wine_items: [] } if photo_urls.empty?
+    logger.info "Starting menu extraction from #{photo_urls.length} photo(s)"
+    photo_urls.each_with_index { |url, i| logger.debug "  Photo #{i + 1}: #{url}" }
+
+    if photo_urls.empty?
+      logger.warn "No photos provided for extraction"
+      return { food_items: [], wine_items: [] }
+    end
+
+    start_time = Time.now
+    logger.info "Calling OpenAI Vision API for menu extraction..."
 
     response = @openai.vision_analyze(photo_urls, EXTRACTION_PROMPT, response_format: EXTRACTION_SCHEMA)
-    @openai.extract_json(response)
+
+    elapsed = (Time.now - start_time).round(2)
+    logger.info "OpenAI Vision API response received in #{elapsed}s"
+    logger.debug "Raw response length: #{response.to_s.length} chars"
+
+    result = @openai.extract_json(response)
+
+    logger.info "Extraction complete:"
+    logger.info "  Restaurant: #{result[:restaurant_name] || 'Not detected'}"
+    logger.info "  Address: #{result[:restaurant_address] || 'Not detected'}"
+    logger.info "  Food items: #{result[:food_items]&.length || 0}"
+    logger.info "  Wine items: #{result[:wine_items]&.length || 0}"
+
+    if result[:food_items]&.any?
+      logger.debug "Food items extracted:"
+      result[:food_items].each_with_index do |item, i|
+        logger.debug "  #{i + 1}. #{item[:name]} ($#{item[:price]}) [#{item[:category]}]"
+      end
+    end
+
+    if result[:wine_items]&.any?
+      logger.debug "Wine items extracted:"
+      result[:wine_items].each_with_index do |item, i|
+        logger.debug "  #{i + 1}. #{item[:name]} (glass: $#{item[:price_glass]}, bottle: $#{item[:price_bottle]}) [#{item[:category]}]"
+      end
+    end
+
+    result
   rescue OpenaiClient::OpenaiError => e
+    logger.error "Menu extraction failed: #{e.message}"
+    logger.error e.backtrace.first(5).join("\n") if e.backtrace
     raise ExtractionError, "Menu extraction failed: #{e.message}"
   end
-
 end
