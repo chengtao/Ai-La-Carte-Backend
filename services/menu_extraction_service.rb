@@ -1,6 +1,53 @@
 class MenuExtractionService
   class ExtractionError < StandardError; end
 
+  EXTRACTION_SCHEMA = {
+    type: "json_schema",
+    json_schema: {
+      name: "menu_extraction",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          restaurant_name: { type: ["string", "null"] },
+          restaurant_address: { type: ["string", "null"] },
+          food_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                price: { type: ["number", "null"] },
+                category: { type: "string", enum: ["appetizer", "soup", "entree", "seafood", "dessert", "other"] },
+                ingredients: { type: "array", items: { type: "string" } },
+                spice: { type: "integer" },
+                richness: { type: "integer" }
+              },
+              required: ["name", "price", "category", "ingredients", "spice", "richness"],
+              additionalProperties: false
+            }
+          },
+          wine_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                price_glass: { type: ["number", "null"] },
+                price_bottle: { type: ["number", "null"] },
+                category: { type: "string", enum: ["sparkling", "white", "rose", "red", "sweet", "other"] }
+              },
+              required: ["name", "price_glass", "price_bottle", "category"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["restaurant_name", "restaurant_address", "food_items", "wine_items"],
+        additionalProperties: false
+      }
+    }
+  }.freeze
+
   EXTRACTION_PROMPT = <<~PROMPT.freeze
     Analyze these menu photos and extract all menu items. For each item, identify:
 
@@ -54,73 +101,10 @@ class MenuExtractionService
   def extract(photo_urls)
     return { food_items: [], wine_items: [] } if photo_urls.empty?
 
-    response = @openai.vision_analyze(photo_urls, EXTRACTION_PROMPT)
+    response = @openai.vision_analyze(photo_urls, EXTRACTION_PROMPT, response_format: EXTRACTION_SCHEMA)
     @openai.extract_json(response)
   rescue OpenaiClient::OpenaiError => e
     raise ExtractionError, "Menu extraction failed: #{e.message}"
   end
 
-  def create_session_with_extraction(photo_urls:, lat:, lng:, potential_restaurant_name: nil, potential_address: nil)
-    extraction = extract(photo_urls)
-
-    DB.transaction do
-      session = Session.create(
-        photo_urls: Sequel.pg_jsonb(photo_urls),
-        lat: lat,
-        lng: lng,
-        potential_restaurant_name: extraction[:restaurant_name] || potential_restaurant_name,
-        potential_address: extraction[:restaurant_address] || potential_address
-      )
-
-      food_menu = create_food_menu(extraction[:food_items]) if extraction[:food_items]&.any?
-      wine_menu = create_wine_menu(extraction[:wine_items]) if extraction[:wine_items]&.any?
-
-      {
-        session: session,
-        food_menu: food_menu,
-        wine_menu: wine_menu,
-        extraction: extraction
-      }
-    end
-  end
-
-  private
-
-  def create_food_menu(items)
-    return nil if items.nil? || items.empty?
-
-    food_menu = FoodMenu.create
-
-    items.each do |item|
-      FoodMenuItem.create(
-        menu_id: food_menu.id,
-        name: item[:name],
-        price: item[:price],
-        category: item[:category] || 'other',
-        spice: item[:spice],
-        richness: item[:richness],
-        ingredients: Sequel.pg_jsonb(item[:ingredients] || [])
-      )
-    end
-
-    food_menu
-  end
-
-  def create_wine_menu(items)
-    return nil if items.nil? || items.empty?
-
-    wine_menu = WineMenu.create
-
-    items.each do |item|
-      WineMenuItem.create(
-        menu_id: wine_menu.id,
-        name: item[:name],
-        price_glass: item[:price_glass],
-        price_bottle: item[:price_bottle],
-        category: item[:category] || 'other'
-      )
-    end
-
-    wine_menu
-  end
 end

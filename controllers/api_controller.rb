@@ -19,35 +19,6 @@ class ApiController < BaseController
     200
   end
 
-  # Create a new session with menu photos
-  # POST /api/sessions
-  # Body: { photo_urls: [], lat: float, lng: float, potential_restaurant_name: string, potential_address: string }
-  post '/api/sessions' do
-    photo_urls = json_params[:photo_urls] || []
-    json_error('photo_urls is required and must be an array', status: 400) unless photo_urls.is_a?(Array)
-
-    extraction_service = MenuExtractionService.new
-    result = extraction_service.create_session_with_extraction(
-      photo_urls: photo_urls,
-      lat: json_params[:lat],
-      lng: json_params[:lng],
-      potential_restaurant_name: json_params[:potential_restaurant_name],
-      potential_address: json_params[:potential_address]
-    )
-
-    # Trigger enrichment asynchronously
-    enrich_menus_async(result[:food_menu], result[:wine_menu])
-
-    json_response({
-      session: result[:session].to_api_hash,
-      food_menu: result[:food_menu]&.to_api_hash,
-      wine_menu: result[:wine_menu]&.to_api_hash,
-      extraction: result[:extraction]
-    }, status: 201)
-  rescue MenuExtractionService::ExtractionError => e
-    json_error(e.message, status: 503)
-  end
-
   # Get session by ID (supports UUID or integer ID)
   # GET /api/sessions/:id
   get '/api/sessions/:id' do
@@ -205,7 +176,6 @@ class ApiController < BaseController
     not_found_error('Session') unless session_record
 
     # Update session location if provided
-    binding.pry
     lat = params[:lat]&.to_f
     lon = params[:lon]&.to_f || params[:lng]&.to_f
     session_record.update(lat: lat, lng: lon) if lat && lon

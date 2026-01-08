@@ -10,20 +10,23 @@ class OpenaiClient
     @api_key = ENV.fetch('OPENAI_API_KEY')
   end
 
-  def vision_analyze(image_urls, prompt)
+  def vision_analyze(image_urls, prompt, response_format: nil)
     content = [{ type: 'text', text: prompt }]
     image_urls.each do |url|
       content << { type: 'image_url', image_url: { url: url } }
     end
 
+    body = {
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: content }],
+      max_tokens: 4096
+    }
+    body[:response_format] = response_format if response_format
+
     response = HTTParty.post(
       "#{BASE_URL}/chat/completions",
       headers: headers,
-      body: {
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: content }],
-        max_tokens: 4096
-      }.to_json,
+      body: body.to_json,
       timeout: 120
     )
 
