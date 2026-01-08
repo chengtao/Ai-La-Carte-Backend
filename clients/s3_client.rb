@@ -6,7 +6,7 @@ class S3Client
 
   def initialize
     @bucket = ENV.fetch('S3_BUCKET')
-    @region = ENV.fetch('AWS_REGION', 'us-east-1')
+    @region = ENV.fetch('AWS_REGION', 'us-west-2')
     @client = Aws::S3::Client.new(
       region: @region,
       access_key_id: ENV.fetch('AWS_ACCESS_KEY_ID'),
@@ -15,14 +15,13 @@ class S3Client
     @resource = Aws::S3::Resource.new(client: @client)
   end
 
-  def upload(key, file_or_io, content_type: 'image/jpeg', acl: 'public-read')
+  def upload(key, file_or_io, content_type: 'image/jpeg')
     obj = @resource.bucket(@bucket).object(key)
     obj.put(
       body: file_or_io,
-      content_type: content_type,
-      acl: acl
+      content_type: content_type
     )
-    obj.public_url
+    public_url(key)
   end
 
   def upload_from_url(key, source_url, content_type: 'image/jpeg')
@@ -57,8 +56,7 @@ class S3Client
       bucket: @bucket,
       key: key,
       content_type: content_type,
-      expires_in: expires_in,
-      acl: 'public-read'
+      expires_in: expires_in
     )
   end
 

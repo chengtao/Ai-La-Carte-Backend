@@ -180,7 +180,7 @@ class ApiController < BaseController
     s3 = S3Client.new
     filename = file[:filename] || "photo_#{Time.now.to_i}.jpg"
     content_type_value = file[:type] || 'image/jpeg'
-    key = "sessions/#{session_uuid}/#{Time.now.to_i}_#{SecureRandom.hex(4)}_#{filename}"
+    key = "static/sessions/#{session_uuid}/#{Time.now.to_i}_#{SecureRandom.hex(4)}_#{filename}"
 
     url = s3.upload(key, file[:tempfile], content_type: content_type_value)
 
@@ -205,6 +205,7 @@ class ApiController < BaseController
     not_found_error('Session') unless session_record
 
     # Update session location if provided
+    binding.pry
     lat = params[:lat]&.to_f
     lon = params[:lon]&.to_f || params[:lng]&.to_f
     session_record.update(lat: lat, lng: lon) if lat && lon
