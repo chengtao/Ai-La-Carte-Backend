@@ -13,6 +13,7 @@ class ApiController < BaseController
 
   after '/api/*' do
     logger.info "API Response: #{response.status}"
+    logger.debug "Response body: #{response.body}" if response.body && !response.body.empty?
   end
 
   options '/api/*' do

@@ -11,7 +11,7 @@ gem 'haml', '~> 6.0'
 
 # Database
 gem 'sequel', '~> 5.0'
-gem 'pg', '~> 1.5'
+gem 'pg', '1.5.4'  # Pinned: 1.6.x has segfault issues on Apple Silicon
 
 # AWS
 gem 'aws-sdk-s3', '~> 1.0'

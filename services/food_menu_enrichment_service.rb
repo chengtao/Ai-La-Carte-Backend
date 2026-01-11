@@ -77,6 +77,8 @@ class FoodMenuEnrichmentService
     logger.info "Received #{enrichments&.length || 0} enrichment(s) from OpenAI"
 
     logger.debug "Starting database transaction for enrichment records..."
+    photos_to_synthesize = []
+
     DB.transaction do
       food_menu_items.zip(enrichments).map do |item, enrichment|
         logger.debug "Enriching item #{item.id}: #{item.name}"
@@ -97,11 +99,15 @@ class FoodMenuEnrichmentService
 
         logger.debug "  Created EnrichedFoodMenuItem for item #{item.id}"
 
-        queue_photo_synthesis(enrichment[:standardized_name])
+        # Collect photos to synthesize (will batch process after transaction)
+        photos_to_synthesize << enrichment[:standardized_name] if enrichment[:standardized_name]
 
         item.reload
       end
     end
+
+    # Queue photo synthesis in a single background thread (batched)
+    queue_batch_photo_synthesis(photos_to_synthesize)
 
     logger.info "Food menu enrichment completed successfully"
     food_menu_items
@@ -122,24 +128,37 @@ class FoodMenuEnrichmentService
 
   private
 
-  def queue_photo_synthesis(standardized_name)
-    if standardized_name.nil?
-      logger.debug "Skipping photo synthesis: no standardized name"
+  # Process all photo synthesis in a single background thread to avoid connection pool exhaustion
+  def queue_batch_photo_synthesis(standardized_names)
+    return if standardized_names.empty?
+
+    # Filter out photos that already exist
+    names_to_process = standardized_names.uniq.reject do |name|
+      FoodPhoto.where(standardized_name: name).any?
+    end
+
+    if names_to_process.empty?
+      logger.debug "All photos already exist, skipping synthesis"
       return
     end
 
-    if FoodPhoto.where(standardized_name: standardized_name).any?
-      logger.debug "Skipping photo synthesis for '#{standardized_name}': photo already exists"
-      return
-    end
+    logger.info "Queuing batch photo synthesis for #{names_to_process.length} item(s)"
 
-    logger.info "Queuing photo synthesis for '#{standardized_name}'"
+    # Single thread processes all photos sequentially
     Thread.new do
-      logger.debug "Starting async photo synthesis for '#{standardized_name}'"
-      FoodPhotoSynthesizer.new.synthesize(standardized_name)
-      logger.info "Photo synthesis completed for '#{standardized_name}'"
+      synthesizer = FoodPhotoSynthesizer.new
+      names_to_process.each_with_index do |name, index|
+        logger.info "Photo synthesis #{index + 1}/#{names_to_process.length}: '#{name}'"
+        begin
+          synthesizer.synthesize(name)
+          logger.info "Photo synthesis completed for '#{name}'"
+        rescue StandardError => e
+          logger.error "Photo synthesis failed for '#{name}': #{e.message}"
+        end
+      end
+      logger.info "Batch photo synthesis completed (#{names_to_process.length} items)"
     rescue StandardError => e
-      logger.error "Photo synthesis failed for '#{standardized_name}': #{e.message}"
+      logger.error "Batch photo synthesis thread failed: #{e.message}"
     end
   end
 end

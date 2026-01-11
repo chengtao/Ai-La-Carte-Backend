@@ -47,7 +47,7 @@ class FoodPhotoSynthesizer
 
     logger.debug "DALL-E generated URL: #{dalle_url[0..100]}..."
 
-    s3_key = "food_photos/#{sanitize_filename(standardized_name)}_#{Time.now.to_i}.jpg"
+    s3_key = "static/food_photos/#{sanitize_filename(standardized_name)}_#{Time.now.to_i}.jpg"
     logger.info "Uploading image to S3: #{s3_key}"
 
     upload_start = Time.now
@@ -112,7 +112,7 @@ class FoodPhotoSynthesizer
         raise SynthesisError, 'Failed to generate image from DALL-E'
       end
 
-      s3_key = "food_photos/#{sanitize_filename(standardized_name)}_#{Time.now.to_i}.jpg"
+      s3_key = "static/food_photos/#{sanitize_filename(standardized_name)}_#{Time.now.to_i}.jpg"
       logger.info "Uploading regenerated image to S3: #{s3_key}"
 
       photo_url = @s3.upload_from_url(s3_key, dalle_url)
